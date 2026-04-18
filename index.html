@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Auth System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #07090f;
+            --panel: #0d1117;
+            --panel2: #111827;
+            --border: #1e3a5f;
+            --accent: #00d4ff;
+            --accent2: #00ff88;
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --text: #e0e0e0;
+            --muted: #6b7280;
+            --granted: #00ff88;
+            --denied: #ff4757;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,212,255,0.01) 2px, rgba(0,212,255,0.01) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(90deg, #07090f, #0d1627, #07090f);
+            border-bottom: 1px solid var(--accent);
+            padding: 0 25px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .status-pill.loading { border-color: var(--warning); color: var(--warning); background: rgba(255,165,2,0.1); }
+        .status-pill.ready { border-color: var(--accent2); color: var(--accent2); background: rgba(0,255,136,0.1); }
+        .status-pill.error { border-color: var(--danger); color: var(--danger); background: rgba(255,71,87,0.1); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+        /* Layout */
+        .main {
+            display: grid;
+            grid-template-columns: 500px 300px 1fr;
+            gap: 12px;
+            padding: 12px;
+            height: calc(100vh - 60px);
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent);
+            letter-spacing: 2px;
+            background: rgba(0,212,255,0.03);
+        }
+        .panel-body {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Camera */
+        #camera-feed {
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            display: block;
+            background: #000;
+        }
+
+        /* Processing overlay */
+        .processing-overlay {
+            display: none;
+            background: rgba(0,212,255,0.08);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* Progress */
+        .progress-wrap {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        .progress-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 6px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .progress-bar { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 11px 16px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .btn-scan { background: linear-gradient(135deg, #0052cc, #0984e3); color: #fff; border: 1px solid #0984e3; }
+        .btn-scan.scanning { background: linear-gradient(135deg, #cc5200, #e36a09); border-color: #e36a09; animation: scanPulse 1s infinite; }
+        @keyframes scanPulse { 0%,100%{box-shadow:0 0 0 0 rgba(227,106,9,0.4)} 50%{box-shadow:0 0 0 6px rgba(227,106,9,0)} }
+        .btn-enroll { background: linear-gradient(135deg, #00895a, #00b894); color: #fff; border: 1px solid #00b894; }
+        .btn-danger { background: linear-gradient(135deg, #c0392b, #e74c3c); color: #fff; border: 1px solid #e74c3c; }
+        .btn-warning { background: linear-gradient(135deg, #d35400, #e67e22); color: #fff; border: 1px solid #e67e22; }
+        .btn-refresh { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.78rem;
+            width: auto;
+            border-radius: 4px;
+        }
+        .btn-delete-user {
+            background: rgba(255,71,87,0.15);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        /* Result */
+        .result-box {
+            padding: 14px;
+            border-radius: 6px;
+            text-align: center;
+            display: none;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .result-granted { background: rgba(0,255,136,0.08); border: 1px solid var(--granted); color: var(--granted); }
+        .result-denied { background: rgba(255,71,87,0.08); border: 1px solid var(--denied); color: var(--denied); }
+        .result-unknown { background: rgba(255,165,2,0.08); border: 1px solid var(--warning); color: var(--warning); }
+
+        /* Score */
+        .score-box {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px;
+            text-align: center;
+        }
+        .score-label { font-size: 0.75rem; color: var(--muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; margin-bottom: 4px; }
+        .score-value { font-family: 'Share Tech Mono', monospace; font-size: 2.2rem; color: var(--accent); line-height: 1; }
+
+        /* Face Preview */
+        .face-preview {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .face-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .face-preview-placeholder { color: var(--muted); font-size: 0.85rem; font-family: 'Share Tech Mono', monospace; text-align: center; }
+
+        /* Input */
+        .input-group { display: flex; flex-direction: column; gap: 4px; }
+        .input-group label { font-size: 0.75rem; color: var(--muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; }
+        .input-group input {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text);
+            padding: 9px 12px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+
+        /* Tabs */
+        .tab-bar { display: flex; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); }
+        .tab-btn {
+            padding: 10px 16px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-content { display: none; padding: 12px; flex: 1; overflow-y: auto; flex-direction: column; gap: 10px; }
+        .tab-content.active { display: flex; }
+
+        /* Table */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table th {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent);
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            letter-spacing: 1px;
+        }
+        .data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(30,58,95,0.4); vertical-align: middle; }
+        .data-table tr:hover td { background: rgba(0,212,255,0.03); }
+        .data-table .empty { text-align: center; color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; padding: 20px; }
+
+        /* Badge */
+        .badge { padding: 3px 9px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+        .badge-granted { background: rgba(0,255,136,0.15); color: var(--granted); border: 1px solid var(--granted); }
+        .badge-denied { background: rgba(255,71,87,0.15); color: var(--denied); border: 1px solid var(--denied); }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 14px; text-align: center; }
+        .stat-val { font-family: 'Share Tech Mono', monospace; font-size: 2rem; line-height: 1; }
+        .stat-lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px; right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            z-index: 10000;
+            display: none;
+            font-family: 'Share Tech Mono', monospace;
+            animation: toastIn 0.3s ease;
+            max-width: 320px;
+        }
+        @keyframes toastIn { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
+        .toast-success { background: rgba(0,255,136,0.15); border: 1px solid var(--granted); color: var(--granted); }
+        .toast-error { background: rgba(255,71,87,0.15); border: 1px solid var(--danger); color: var(--danger); }
+        .toast-info { background: rgba(0,212,255,0.15); border: 1px solid var(--accent); color: var(--accent); }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="header-title">⬡ HOMOMORPHIC FACIAL AUTHENTICATION SYSTEM</div>
+    <div class="status-pill loading" id="status-pill">
+        <div class="dot"></div>
+        <span id="status-text">Loading Models...</span>
+    </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- LEFT — Camera -->
+    <div class="panel">
+        <div class="panel-header">📷 LIVE CAMERA FEED</div>
+        <div class="panel-body">
+            <img id="camera-feed" src="/video_feed" alt="Camera">
+
+            <div class="progress-wrap">
+                <div class="progress-top">
+                    <span>LIVENESS DETECTION</span>
+                    <span id="progress-text">0 / 5</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Processing indicator -->
+            <div class="processing-overlay" id="processing-overlay">
+                ⏳ Processing face automatically...
+            </div>
+
+            <button class="btn btn-scan" id="scan-btn" onclick="toggleScan()">
+                ▶ START SCAN
+            </button>
+
+            <div class="result-box" id="result-box"></div>
+        </div>
+    </div>
+
+    <!-- MIDDLE — Enrollment -->
+    <div class="panel">
+        <div class="panel-header">📋 ENROLLMENT PANEL</div>
+        <div class="panel-body">
+
+            <div class="face-preview" id="face-preview">
+                <div class="face-preview-placeholder">[ NO FACE CAPTURED ]</div>
+            </div>
+
+            <div class="score-box">
+                <div class="score-label">SIMILARITY SCORE</div>
+                <div class="score-value" id="score-value">- -</div>
+            </div>
+
+            <div class="input-group">
+                <label>FULL NAME</label>
+                <input type="text" id="name-input" placeholder="Enter full name...">
+            </div>
+
+            <div class="input-group">
+                <label>USER ID</label>
+                <input type="text" id="userid-input" placeholder="Enter user ID...">
+            </div>
+
+            <button class="btn btn-enroll" id="enroll-btn"
+                    onclick="enrollUser()" disabled>
+                ✅ ENROLL USER
+            </button>
+
+        </div>
+    </div>
+
+    <!-- RIGHT — Dashboard -->
+    <div class="panel">
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="showTab('users', this)">👥 USERS</button>
+            <button class="tab-btn" onclick="showTab('logs', this)">📜 LOGS</button>
+            <button class="tab-btn" onclick="showTab('admin', this)">⚙️ ADMIN</button>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-content active" id="tab-users">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>NAME</th>
+                        <th>USER ID</th>
+                        <th>ENROLLED AT</th>
+                        <th>ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody"></tbody>
+            </table>
+            <button class="btn btn-refresh" onclick="loadUsers()">🔄 REFRESH</button>
+        </div>
+
+        <!-- Logs Tab -->
+        <div class="tab-content" id="tab-logs">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>TIME</th>
+                        <th>NAME</th>
+                        <th>SCORE</th>
+                        <th>STATUS</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-tbody"></tbody>
+            </table>
+            <button class="btn btn-refresh" onclick="loadLogs()">🔄 REFRESH</button>
+        </div>
+
+        <!-- Admin Tab -->
+        <div class="tab-content" id="tab-admin">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-val" id="stat-users" style="color:var(--accent)">0</div>
+                    <div class="stat-lbl">👥 TOTAL USERS</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="stat-scans" style="color:var(--accent)">0</div>
+                    <div class="stat-lbl">📜 TOTAL SCANS</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="stat-granted" style="color:var(--granted)">0</div>
+                    <div class="stat-lbl">✅ GRANTED</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="stat-denied" style="color:var(--denied)">0</div>
+                    <div class="stat-lbl">❌ DENIED</div>
+                </div>
+            </div>
+            <button class="btn btn-danger" onclick="clearUsers()">🗑️ CLEAR ALL USERS</button>
+            <button class="btn btn-warning" onclick="clearLogs()">🗑️ CLEAR ALL LOGS</button>
+            <button class="btn btn-refresh" onclick="loadStats()">🔄 REFRESH STATS</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const socket = io();
+let isScanning = false;
+
+// ─── Socket Events ────────────────────────────────────────────────────────────
+socket.on('system_status', (data) => {
+    const pill = document.getElementById('status-pill');
+    const text = document.getElementById('status-text');
+    text.textContent = data.message;
+    pill.className = 'status-pill ' + (
+        data.ready ? 'ready' :
+        data.message.includes('Error') ? 'error' : 'loading'
+    );
+});
+
+socket.on('progress', (data) => {
+    document.getElementById('progress-fill').style.width = data.percent + '%';
+    document.getElementById('progress-text').textContent =
+        `${data.counter} / ${data.required}`;
+});
+
+socket.on('face_captured', (data) => {
+    // Stop scanning UI
+    isScanning = false;
+    const btn = document.getElementById('scan-btn');
+    btn.textContent = '▶ START SCAN';
+    btn.classList.remove('scanning');
+
+    // Show captured face
+    document.getElementById('face-preview').innerHTML =
+        `<img src="/captured_face?t=${Date.now()}" alt="Captured Face">`;
+
+    // Show processing overlay
+    document.getElementById('processing-overlay').style.display = 'block';
+    document.getElementById('result-box').style.display = 'none';
+    document.getElementById('score-value').textContent = '- -';
+    document.getElementById('enroll-btn').disabled = true;
+
+    showToast('📸 ' + data.message, 'info');
+});
+
+// ✅ Auto process result — no button needed!
+socket.on('process_result', (data) => {
+    document.getElementById('processing-overlay').style.display = 'none';
+
+    const score = data.score !== undefined ? data.score : -1;
+    document.getElementById('score-value').textContent =
+        score >= 0 ? score.toFixed(4) : '- -';
+
+    const resultBox = document.getElementById('result-box');
+    resultBox.style.display = 'block';
+
+    if (data.status === 'granted') {
+        resultBox.className = 'result-box result-granted';
+        resultBox.innerHTML =
+            `✅ ACCESS GRANTED<br>👤 Welcome, ${data.name}!<br>` +
+            `<small style="opacity:0.7">ID: ${data.user_id} | Score: ${score.toFixed(4)}</small>`;
+        document.getElementById('enroll-btn').disabled = true;
+        showToast(`✅ Welcome, ${data.name}!`, 'success');
+    } else if (data.status === 'unknown') {
+        resultBox.className = 'result-box result-unknown';
+        resultBox.innerHTML =
+            `⚠️ UNKNOWN FACE<br>` +
+            `<small style="opacity:0.7">Fill details below to enroll</small>`;
+        document.getElementById('enroll-btn').disabled = false;
+        showToast('⚠️ Face not recognized. Enroll below.', 'info');
+    } else if (data.status === 'error') {
+        resultBox.className = 'result-box result-denied';
+        resultBox.innerHTML = `❌ ERROR: ${data.message}`;
+        showToast('❌ ' + data.message, 'error');
+    }
+
+    loadLogs();
+    loadStats();
+});
+
+socket.on('processing_start', (data) => {
+    document.getElementById('processing-overlay').style.display = 'block';
+    document.getElementById('processing-overlay').textContent = data.message;
+});
+
+// ─── Scan Toggle ──────────────────────────────────────────────────────────────
+async function toggleScan() {
+    const btn = document.getElementById('scan-btn');
+
+    if (!isScanning) {
+        const res = await fetch('/api/start_scan', { method: 'POST' });
+        const data = await res.json();
+        if (data.error) { showToast('❌ ' + data.error, 'error'); return; }
+
+        isScanning = true;
+        btn.textContent = '⏹ STOP SCAN';
+        btn.classList.add('scanning');
+        document.getElementById('result-box').style.display = 'none';
+        document.getElementById('enroll-btn').disabled = true;
+        document.getElementById('score-value').textContent = '- -';
+        document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0 / 5';
+        document.getElementById('processing-overlay').style.display = 'none';
+        showToast(' Scanning for real face...', 'info');
+    } else {
+        await fetch('/api/stop_scan', { method: 'POST' });
+        isScanning = false;
+        btn.textContent = '▶ START SCAN';
+        btn.classList.remove('scanning');
+        document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0 / 5';
+    }
+}
+
+// ─── Enroll ───────────────────────────────────────────────────────────────────
+async function enrollUser() {
+    const name = document.getElementById('name-input').value.trim();
+    const userId = document.getElementById('userid-input').value.trim();
+    if (!name || !userId) {
+        showToast('❌ Enter Name and User ID!', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('enroll-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Enrolling...';
+
+    try {
+        const res = await fetch('/api/enroll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, user_id: userId })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            showToast('❌ ' + data.error, 'error');
+            btn.disabled = false;
+            btn.textContent = '✅ ENROLL USER';
+            return;
+        }
+
+        const resultBox = document.getElementById('result-box');
+        resultBox.className = 'result-box result-granted';
+        resultBox.innerHTML = `✅ ENROLLED SUCCESSFULLY!<br>👤 ${name}`;
+        resultBox.style.display = 'block';
+
+        document.getElementById('name-input').value = '';
+        document.getElementById('userid-input').value = '';
+        showToast(`✅ ${name} enrolled!`, 'success');
+        loadUsers();
+        loadStats();
+
+    } catch (err) {
+        showToast('❌ ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '✅ ENROLL USER';
+    }
+}
+
+// ─── Load Users ───────────────────────────────────────────────────────────────
+async function loadUsers() {
+    const res = await fetch('/api/users');
+    const users = await res.json();
+    const tbody = document.getElementById('users-tbody');
+
+    if (!users.length) {
+        tbody.innerHTML =
+            '<tr><td colspan="5" class="empty">[ NO ENROLLED USERS ]</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map((u, i) => `
+        <tr>
+            <td style="color:var(--muted)">${i + 1}</td>
+            <td>👤 ${u.name}</td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:0.78rem">
+                ${u.user_id}
+            </td>
+            <td style="color:var(--muted);font-size:0.78rem">${u.enrolled_at}</td>
+            <td>
+                <button class="btn btn-sm btn-delete-user"
+                        onclick="deleteUser('${u.user_id}', '${u.name}')">
+                    🗑️ Delete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ✅ Delete individual user
+async function deleteUser(userId, name) {
+    if (!confirm(`⚠️ Delete user "${name}"?`)) return;
+
+    const res = await fetch(`/api/delete_user/${userId}`, {
+        method: 'DELETE'
+    });
+    const data = await res.json();
+
+    if (data.error) {
+        showToast('❌ ' + data.error, 'error');
+        return;
+    }
+
+    showToast(`✅ ${name} deleted!`, 'success');
+    loadUsers();
+    loadStats();
+}
+
+// ─── Load Logs ────────────────────────────────────────────────────────────────
+async function loadLogs() {
+    const res = await fetch('/api/logs');
+    const logs = await res.json();
+    const tbody = document.getElementById('logs-tbody');
+
+    if (!logs.length) {
+        tbody.innerHTML =
+            '<tr><td colspan="4" class="empty">[ NO ACCESS LOGS ]</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+        <tr>
+            <td style="color:var(--muted);font-size:0.78rem">${l.timestamp}</td>
+            <td>${l.name}</td>
+            <td style="font-family:'Share Tech Mono',monospace">${l.score}</td>
+            <td>
+                <span class="badge badge-${l.status.toLowerCase()}">
+                    ${l.status}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+async function loadStats() {
+    const res = await fetch('/api/stats');
+    const s = await res.json();
+    document.getElementById('stat-users').textContent = s.total_users;
+    document.getElementById('stat-scans').textContent = s.total_scans;
+    document.getElementById('stat-granted').textContent = s.granted;
+    document.getElementById('stat-denied').textContent = s.denied;
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+async function clearUsers() {
+    if (!confirm('⚠️ Delete ALL enrolled users?')) return;
+    await fetch('/api/clear_users', { method: 'DELETE' });
+    loadUsers(); loadStats();
+    showToast('✅ All users cleared!', 'success');
+}
+
+async function clearLogs() {
+    if (!confirm('⚠️ Delete ALL access logs?')) return;
+    await fetch('/api/clear_logs', { method: 'DELETE' });
+    loadLogs();
+    showToast('✅ All logs cleared!', 'success');
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(name, el) {
+    document.querySelectorAll('.tab-content').forEach(
+        t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(
+        b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+    if (name === 'users') loadUsers();
+    if (name === 'logs') loadLogs();
+    if (name === 'admin') loadStats();
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast toast-${type}`;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3500);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.onload = () => {
+    loadUsers();
+    loadLogs();
+    loadStats();
+};
+</script>
+</body>
+</html>
