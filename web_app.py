@@ -1,6 +1,9 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect, url_for
 from flask_socketio import SocketIO
 from flask_cors import CORS
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 import cv2
 import numpy as np
 import tenseal as ts
@@ -30,9 +33,55 @@ CAPTURE_PATH = os.path.join(BASE_DIR, "captured_face.jpg")
 
 # ─── Flask Setup ──────────────────────────────────────────────────────────────
 app = Flask(__name__)
-app.secret_key = "biometric_secret_2024"
+app.secret_key = "biometric_secret_2024_secure"
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# ─── Admin Credentials (RBAC) ─────────────────────────────────────────────────
+USERS = {
+    "admin": {
+        "password": generate_password_hash("Admin@2024#Secure"),
+        "role": "admin",
+        "name": "System Administrator"
+    },
+    "admin2": {
+        "password": generate_password_hash("Admin2@2024#Secure"),
+        "role": "admin",
+        "name": "Second Administrator"
+    }
+}
+
+# ─── Login Manager ────────────────────────────────────────────────────────────
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+class User(UserMixin):
+    def __init__(self, uid, role="operator", name="User"):
+        self.id = uid
+        self.role = role
+        self.name = name
+
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id in USERS:
+        return User(user_id, USERS[user_id]['role'],
+                    USERS[user_id]['name'])
+    if user_id.startswith("face_"):
+        name = user_id.replace("face_", "")
+        return User(user_id, "operator", name)
+    return None
+
+# ─── Admin Required Decorator ─────────────────────────────────────────────────
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or \
+           current_user.role != 'admin':
+            return jsonify(
+                {'error': '❌ Admin access required!'}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 # ─── Global State ─────────────────────────────────────────────────────────────
 yolo_model = None
@@ -56,40 +105,29 @@ def load_models():
         else:
             context = create_ckks_context()
             save_context(context, CONTEXT_PATH)
-
         print("🤖 Loading YOLO model...")
         yolo_model = YOLO(YOLO_MODEL_PATH)
         yolo_model.to('cuda')
-
         system_ready = True
         print("✅ All models loaded!")
         socketio.emit('system_status', {
-            'ready': True,
-            'message': '✅ System Ready'
-        })
+            'ready': True, 'message': '✅ System Ready'})
     except Exception as e:
         print(f"❌ Error: {e}")
         socketio.emit('system_status', {
-            'ready': False,
-            'message': f'❌ Error: {e}'
-        })
+            'ready': False, 'message': f'❌ Error: {e}'})
 
 # ─── Auto Process Face ────────────────────────────────────────────────────────
 def auto_process_face():
-    """Automatically process face after capture"""
     global current_embedding, processing
-
     try:
         processing = True
         socketio.emit('processing_start', {
-            'message': '🧠 Processing face automatically...'
-        })
+            'message': '🧠 Processing face automatically...'})
 
-        # Extract FaceNet embedding
         embedding = extract_feature_vector(CAPTURE_PATH)
         current_embedding = np.array(embedding, dtype=np.float64)
 
-        # Try authentication
         db = get_database()
         collection = db["enrolled_users"]
         users = list(collection.find({}))
@@ -98,8 +136,7 @@ def auto_process_face():
             socketio.emit('process_result', {
                 'status': 'unknown',
                 'message': 'No users enrolled yet.',
-                'score': -1
-            })
+                'score': -1})
             processing = False
             return
 
@@ -109,25 +146,26 @@ def auto_process_face():
         for user in users:
             user_id = user["user_id"]
             W = generate_transform_key(user_id, keys_dir=KEYS_DIR)
-            protected_query = cancelable_transform(current_embedding, W)
-            enc_query = ts.ckks_vector(context, protected_query.tolist())
+            protected_query = cancelable_transform(
+                current_embedding, W)
+            enc_query = ts.ckks_vector(
+                context, protected_query.tolist())
             enc_stored = ts.ckks_vector_from(
                 context, user["encrypted_template"])
             dot_product = enc_query.dot(enc_stored)
             score = float(dot_product.decrypt()[0])
-
             if score > best_score:
                 best_score = score
                 best_match = user
 
         matched = best_score >= SIMILARITY_THRESHOLD
 
-        # Log access
         db["access_logs"].insert_one({
             "name": best_match['name'] if matched else "Unknown",
             "user_id": best_match['user_id'] if matched else "N/A",
             "score": round(best_score, 4),
             "status": "GRANTED" if matched else "DENIED",
+            "login_type": "face",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
@@ -136,27 +174,22 @@ def auto_process_face():
                 'status': 'granted',
                 'name': best_match['name'],
                 'user_id': best_match['user_id'],
-                'score': round(best_score, 4)
-            })
+                'score': round(best_score, 4)})
         else:
             socketio.emit('process_result', {
                 'status': 'unknown',
                 'score': round(best_score, 4),
-                'message': 'Face not recognized. Enroll below.'
-            })
+                'message': 'Face not recognized. Enroll below.'})
 
     except Exception as e:
         socketio.emit('process_result', {
-            'status': 'error',
-            'message': str(e)
-        })
+            'status': 'error', 'message': str(e)})
     finally:
         processing = False
 
 # ─── Camera Thread ────────────────────────────────────────────────────────────
 def camera_thread():
     global cap, real_counter, scanning, latest_frame
-
     cap = cv2.VideoCapture(CAMERA_INDEX)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -167,7 +200,6 @@ def camera_thread():
         if not ret:
             time.sleep(0.1)
             continue
-
         display_frame = frame.copy()
 
         if scanning and yolo_model and not processing:
@@ -189,11 +221,9 @@ def camera_thread():
                             'counter': real_counter,
                             'required': REAL_COUNTER_REQUIRED,
                             'percent': min(
-                                (real_counter / REAL_COUNTER_REQUIRED) * 100,
-                                100)
-                        })
+                                (real_counter/REAL_COUNTER_REQUIRED)*100,
+                                100)})
 
-                        # ✅ Auto capture + auto process
                         if real_counter >= REAL_COUNTER_REQUIRED:
                             face = frame[y1:y2, x1:x2]
                             if face.size > 0:
@@ -201,38 +231,28 @@ def camera_thread():
                                 scanning = False
                                 real_counter = 0
                                 socketio.emit('face_captured', {
-                                    'message': '📸 Face captured!'
-                                })
-                                # Auto process immediately
+                                    'message': '📸 Face captured!'})
                                 threading.Thread(
                                     target=auto_process_face,
-                                    daemon=True
-                                ).start()
+                                    daemon=True).start()
 
-                        color = (0, 255, 0) if label == "real" else (0, 0, 255)
-                        cv2.rectangle(
-                            display_frame, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(
-                            display_frame,
+                        color = (0,255,0) if label=="real" else (0,0,255)
+                        cv2.rectangle(display_frame,
+                                      (x1,y1),(x2,y2),color,2)
+                        cv2.putText(display_frame,
                             f"{label.upper()} {int(conf*100)}%",
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                            (x1,y1-10),cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,color,2)
 
-                # Progress bar on frame
-                pw = int((real_counter / REAL_COUNTER_REQUIRED) * 200)
-                cv2.rectangle(display_frame, (10, 10), (210, 35),
-                              (30, 30, 30), -1)
-                cv2.rectangle(display_frame, (10, 10),
-                              (10 + pw, 35), (0, 255, 0), -1)
-                cv2.putText(
-                    display_frame,
+                pw = int((real_counter/REAL_COUNTER_REQUIRED)*200)
+                cv2.rectangle(display_frame,(10,10),(210,35),(30,30,30),-1)
+                cv2.rectangle(display_frame,(10,10),(10+pw,35),(0,255,0),-1)
+                cv2.putText(display_frame,
                     f"Real: {real_counter}/{REAL_COUNTER_REQUIRED}",
-                    (10, 55), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (255, 255, 255), 2)
-                cv2.putText(
-                    display_frame, "SCANNING...",
-                    (10, display_frame.shape[0] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                    (10,55),cv2.FONT_HERSHEY_SIMPLEX,0.6,(255,255,255),2)
+                cv2.putText(display_frame,"SCANNING...",
+                    (10,display_frame.shape[0]-10),
+                    cv2.FONT_HERSHEY_SIMPLEX,0.6,(0,255,255),2)
 
             except Exception as e:
                 print(f"Frame error: {e}")
@@ -249,9 +269,8 @@ def generate_frames():
                 time.sleep(0.033)
                 continue
             frame = latest_frame.copy()
-
-        ret, buffer = cv2.imencode(
-            '.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        ret, buffer = cv2.imencode('.jpg', frame,
+                                   [cv2.IMWRITE_JPEG_QUALITY, 80])
         if not ret:
             continue
         yield (b'--frame\r\n'
@@ -259,17 +278,132 @@ def generate_frames():
                buffer.tobytes() + b'\r\n')
         time.sleep(0.033)
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+# ─── Login Routes ─────────────────────────────────────────────────────────────
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        if username in USERS and \
+           check_password_hash(USERS[username]['password'], password):
+            user = User(username, USERS[username]['role'],
+                        USERS[username]['name'])
+            login_user(user)
+            return redirect('/')
+        else:
+            error = "❌ Invalid username or password!"
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect('/login')
+
+@app.route('/api/me')
+@login_required
+def get_me():
+    return jsonify({
+        'username': current_user.id,
+        'role': current_user.role,
+        'name': current_user.name
+    })
+
+# ─── Face Login Route ─────────────────────────────────────────────────────────
+@app.route('/api/face_login', methods=['POST'])
+def face_login():
+    """Login via face scan for enrolled users"""
+    global current_embedding
+    try:
+        if not os.path.exists(CAPTURE_PATH):
+            return jsonify({'error': 'No face captured!'}), 400
+
+        embedding = extract_feature_vector(CAPTURE_PATH)
+        current_embedding = np.array(embedding, dtype=np.float64)
+
+        db = get_database()
+        collection = db["enrolled_users"]
+        users = list(collection.find({}))
+
+        if len(users) == 0:
+            return jsonify({
+                'status': 'unknown',
+                'message': 'No users enrolled yet.',
+                'score': -1
+            })
+
+        best_match = None
+        best_score = -1
+
+        for user in users:
+            user_id = user["user_id"]
+            W = generate_transform_key(user_id, keys_dir=KEYS_DIR)
+            protected_query = cancelable_transform(current_embedding, W)
+            enc_query = ts.ckks_vector(context, protected_query.tolist())
+            enc_stored = ts.ckks_vector_from(
+                context, user["encrypted_template"])
+            dot_product = enc_query.dot(enc_stored)
+            score = float(dot_product.decrypt()[0])
+            if score > best_score:
+                best_score = score
+                best_match = user
+
+        matched = best_score >= SIMILARITY_THRESHOLD
+
+        if matched:
+            face_user = User(
+                f"face_{best_match['user_id']}",
+                "operator",
+                best_match['name']
+            )
+            login_user(face_user)
+
+            db["access_logs"].insert_one({
+                "name": best_match['name'],
+                "user_id": best_match['user_id'],
+                "score": round(best_score, 4),
+                "status": "GRANTED",
+                "login_type": "face",
+                "timestamp": datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S")
+            })
+
+            return jsonify({
+                'status': 'granted',
+                'name': best_match['name'],
+                'user_id': best_match['user_id'],
+                'score': round(best_score, 4)
+            })
+        else:
+            db["access_logs"].insert_one({
+                "name": "Unknown",
+                "user_id": "N/A",
+                "score": round(best_score, 4),
+                "status": "DENIED",
+                "login_type": "face",
+                "timestamp": datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S")
+            })
+            return jsonify({
+                'status': 'unknown',
+                'score': round(best_score, 4),
+                'message': 'Face not recognized.'
+            })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ─── Main Routes ──────────────────────────────────────────────────────────────
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(
-        generate_frames(),
-        mimetype='multipart/x-mixed-replace; boundary=frame'
-    )
+    return Response(generate_frames(),
+        mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/captured_face')
 def captured_face():
@@ -279,15 +413,17 @@ def captured_face():
     return '', 404
 
 @app.route('/api/start_scan', methods=['POST'])
+@login_required
 def start_scan():
     global scanning, real_counter
     if not system_ready:
-        return jsonify({'error': 'System not ready yet!'}), 400
+        return jsonify({'error': 'System not ready!'}), 400
     scanning = True
     real_counter = 0
     return jsonify({'success': True})
 
 @app.route('/api/stop_scan', methods=['POST'])
+@login_required
 def stop_scan():
     global scanning, real_counter
     scanning = False
@@ -295,6 +431,7 @@ def stop_scan():
     return jsonify({'success': True})
 
 @app.route('/api/enroll', methods=['POST'])
+@login_required
 def enroll():
     global current_embedding
     try:
@@ -303,12 +440,9 @@ def enroll():
         user_id = data.get('user_id', '').strip()
 
         if not name or not user_id:
-            return jsonify(
-                {'error': 'Name and User ID are required!'}), 400
-
+            return jsonify({'error': 'Name and User ID required!'}), 400
         if current_embedding is None:
-            return jsonify(
-                {'error': 'No face captured! Start scan first.'}), 400
+            return jsonify({'error': 'No face captured!'}), 400
 
         db = get_database()
         collection = db["enrolled_users"]
@@ -328,15 +462,13 @@ def enroll():
             "enrolled_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
-        return jsonify({
-            'success': True,
-            'message': f'✅ {name} enrolled successfully!'
-        })
-
+        return jsonify({'success': True,
+                        'message': f'✅ {name} enrolled!'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/users')
+@login_required
 def get_users():
     db = get_database()
     users = list(db["enrolled_users"].find(
@@ -344,6 +476,7 @@ def get_users():
     return jsonify(users)
 
 @app.route('/api/logs')
+@login_required
 def get_logs():
     db = get_database()
     logs = list(db["access_logs"].find(
@@ -351,6 +484,7 @@ def get_logs():
     return jsonify(logs)
 
 @app.route('/api/stats')
+@login_required
 def get_stats():
     db = get_database()
     return jsonify({
@@ -362,34 +496,35 @@ def get_stats():
             {"status": "DENIED"})
     })
 
-# ✅ Delete individual user
+# ─── Admin Only Routes ────────────────────────────────────────────────────────
 @app.route('/api/delete_user/<user_id>', methods=['DELETE'])
+@login_required
+@admin_required
 def delete_user(user_id):
     try:
         db = get_database()
         result = db["enrolled_users"].delete_one({"user_id": user_id})
         if result.deleted_count == 0:
             return jsonify({'error': 'User not found!'}), 404
-
-        # Delete key file too
-        key_path = os.path.join(KEYS_DIR, f"{user_id}_key.npy")
-        if os.path.exists(key_path):
-            os.remove(key_path)
-
-        return jsonify({
-            'success': True,
-            'message': f'User {user_id} deleted!'
-        })
+        for ext in ['.enc', '.npy']:
+            key_path = os.path.join(KEYS_DIR, f"{user_id}_key{ext}")
+            if os.path.exists(key_path):
+                os.remove(key_path)
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/clear_users', methods=['DELETE'])
+@login_required
+@admin_required
 def clear_users():
     db = get_database()
     db["enrolled_users"].delete_many({})
     return jsonify({'success': True})
 
 @app.route('/api/clear_logs', methods=['DELETE'])
+@login_required
+@admin_required
 def clear_logs():
     db = get_database()
     db["access_logs"].delete_many({})
@@ -405,11 +540,7 @@ def on_connect():
 
 # ─── Run ──────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    cam_thread = threading.Thread(target=camera_thread, daemon=True)
-    cam_thread.start()
-
-    model_thread = threading.Thread(target=load_models, daemon=True)
-    model_thread.start()
-
+    threading.Thread(target=camera_thread, daemon=True).start()
+    threading.Thread(target=load_models, daemon=True).start()
     print("🌐 Starting at http://localhost:5000")
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)
