@@ -36,7 +36,8 @@
             width: 100%; height: 100%;
             background: repeating-linear-gradient(
                 0deg, transparent, transparent 2px,
-                rgba(0,212,255,0.01) 2px, rgba(0,212,255,0.01) 4px
+                rgba(0,212,255,0.01) 2px,
+                rgba(0,212,255,0.01) 4px
             );
             pointer-events: none;
             z-index: 9999;
@@ -44,9 +45,10 @@
 
         /* Header */
         .header {
-            background: linear-gradient(90deg, #07090f, #0d1627, #07090f);
+            background: linear-gradient(
+                90deg, #07090f, #0d1627, #07090f);
             border-bottom: 1px solid var(--accent);
-            padding: 0 25px;
+            padding: 0 20px;
             height: 60px;
             display: flex;
             align-items: center;
@@ -54,31 +56,90 @@
         }
         .header-title {
             font-family: 'Share Tech Mono', monospace;
-            font-size: 1rem;
+            font-size: 0.95rem;
             color: var(--accent);
             letter-spacing: 2px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-badge {
+            padding: 5px 12px;
+            background: rgba(0,212,255,0.08);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+        }
+        .role-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .role-admin {
+            background: rgba(255,165,2,0.15);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+        .role-operator {
+            background: rgba(0,255,136,0.1);
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
         }
         .status-pill {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
+            gap: 6px;
+            padding: 5px 12px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             border: 1px solid;
             font-family: 'Share Tech Mono', monospace;
         }
-        .status-pill.loading { border-color: var(--warning); color: var(--warning); background: rgba(255,165,2,0.1); }
-        .status-pill.ready { border-color: var(--accent2); color: var(--accent2); background: rgba(0,255,136,0.1); }
-        .status-pill.error { border-color: var(--danger); color: var(--danger); background: rgba(255,71,87,0.1); }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+        .status-pill.loading {
+            border-color: var(--warning);
+            color: var(--warning);
+            background: rgba(255,165,2,0.1);
+        }
+        .status-pill.ready {
+            border-color: var(--accent2);
+            color: var(--accent2);
+            background: rgba(0,255,136,0.1);
+        }
+        .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%,100%{opacity:1;transform:scale(1)}
+            50%{opacity:0.4;transform:scale(0.8)}
+        }
+        .logout-btn {
+            padding: 5px 14px;
+            background: rgba(255,71,87,0.15);
+            border: 1px solid var(--danger);
+            border-radius: 20px;
+            color: var(--danger);
+            text-decoration: none;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { background: rgba(255,71,87,0.25); }
 
         /* Layout */
         .main {
             display: grid;
-            grid-template-columns: 500px 300px 1fr;
+            grid-template-columns: 480px 380px 1fr;
             gap: 12px;
             padding: 12px;
             height: calc(100vh - 60px);
@@ -97,13 +158,14 @@
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            background: linear-gradient(
+                90deg, transparent, var(--accent), transparent);
         }
         .panel-header {
             padding: 12px 16px;
             border-bottom: 1px solid var(--border);
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--accent);
             letter-spacing: 2px;
             background: rgba(0,212,255,0.03);
@@ -126,7 +188,7 @@
             background: #000;
         }
 
-        /* Processing overlay */
+        /* Processing */
         .processing-overlay {
             display: none;
             background: rgba(0,212,255,0.08);
@@ -139,7 +201,9 @@
             color: var(--accent);
             animation: blink 1s infinite;
         }
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        @keyframes blink {
+            0%,100%{opacity:1} 50%{opacity:0.5}
+        }
 
         /* Progress */
         .progress-wrap {
@@ -151,16 +215,22 @@
         .progress-top {
             display: flex;
             justify-content: space-between;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--muted);
             margin-bottom: 6px;
             font-family: 'Share Tech Mono', monospace;
         }
-        .progress-bar { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
         .progress-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            background: linear-gradient(
+                90deg, var(--accent), var(--accent2));
             border-radius: 4px;
             transition: width 0.3s ease;
         }
@@ -183,14 +253,44 @@
             width: 100%;
         }
         .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .btn:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.1); }
-        .btn-scan { background: linear-gradient(135deg, #0052cc, #0984e3); color: #fff; border: 1px solid #0984e3; }
-        .btn-scan.scanning { background: linear-gradient(135deg, #cc5200, #e36a09); border-color: #e36a09; animation: scanPulse 1s infinite; }
-        @keyframes scanPulse { 0%,100%{box-shadow:0 0 0 0 rgba(227,106,9,0.4)} 50%{box-shadow:0 0 0 6px rgba(227,106,9,0)} }
-        .btn-enroll { background: linear-gradient(135deg, #00895a, #00b894); color: #fff; border: 1px solid #00b894; }
-        .btn-danger { background: linear-gradient(135deg, #c0392b, #e74c3c); color: #fff; border: 1px solid #e74c3c; }
-        .btn-warning { background: linear-gradient(135deg, #d35400, #e67e22); color: #fff; border: 1px solid #e67e22; }
-        .btn-refresh { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+        .btn:not(:disabled):hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+        .btn-scan {
+            background: linear-gradient(135deg, #0052cc, #0984e3);
+            color: #fff;
+            border: 1px solid #0984e3;
+        }
+        .btn-scan.scanning {
+            background: linear-gradient(135deg, #cc5200, #e36a09);
+            border-color: #e36a09;
+            animation: scanPulse 1s infinite;
+        }
+        @keyframes scanPulse {
+            0%,100%{box-shadow:0 0 0 0 rgba(227,106,9,0.4)}
+            50%{box-shadow:0 0 0 6px rgba(227,106,9,0)}
+        }
+        .btn-enroll {
+            background: linear-gradient(135deg, #00895a, #00b894);
+            color: #fff;
+            border: 1px solid #00b894;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            color: #fff;
+            border: 1px solid #e74c3c;
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #d35400, #e67e22);
+            color: #fff;
+            border: 1px solid #e67e22;
+        }
+        .btn-refresh {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
         .btn-sm {
             padding: 5px 10px;
             font-size: 0.78rem;
@@ -213,9 +313,21 @@
             font-size: 1rem;
             line-height: 1.6;
         }
-        .result-granted { background: rgba(0,255,136,0.08); border: 1px solid var(--granted); color: var(--granted); }
-        .result-denied { background: rgba(255,71,87,0.08); border: 1px solid var(--denied); color: var(--denied); }
-        .result-unknown { background: rgba(255,165,2,0.08); border: 1px solid var(--warning); color: var(--warning); }
+        .result-granted {
+            background: rgba(0,255,136,0.08);
+            border: 1px solid var(--granted);
+            color: var(--granted);
+        }
+        .result-denied {
+            background: rgba(255,71,87,0.08);
+            border: 1px solid var(--denied);
+            color: var(--denied);
+        }
+        .result-unknown {
+            background: rgba(255,165,2,0.08);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
 
         /* Score */
         .score-box {
@@ -225,26 +337,51 @@
             padding: 14px;
             text-align: center;
         }
-        .score-label { font-size: 0.75rem; color: var(--muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; margin-bottom: 4px; }
-        .score-value { font-family: 'Share Tech Mono', monospace; font-size: 2.2rem; color: var(--accent); line-height: 1; }
+        .score-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .score-value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2rem;
+            color: var(--accent);
+            line-height: 1;
+        }
 
         /* Face Preview */
         .face-preview {
             background: var(--panel2);
             border: 1px solid var(--border);
             border-radius: 6px;
-            height: 180px;
+            height: 220px;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
         }
-        .face-preview img { width: 100%; height: 100%; object-fit: cover; }
-        .face-preview-placeholder { color: var(--muted); font-size: 0.85rem; font-family: 'Share Tech Mono', monospace; text-align: center; }
+        .face-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .face-preview-placeholder {
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-family: 'Share Tech Mono', monospace;
+            text-align: center;
+        }
 
         /* Input */
         .input-group { display: flex; flex-direction: column; gap: 4px; }
-        .input-group label { font-size: 0.75rem; color: var(--muted); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; }
+        .input-group label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 1px;
+        }
         .input-group input {
             background: var(--panel2);
             border: 1px solid var(--border);
@@ -259,50 +396,125 @@
         .input-group input:focus { border-color: var(--accent); }
 
         /* Tabs */
-        .tab-bar { display: flex; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); }
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+        }
         .tab-btn {
-            padding: 10px 16px;
+            padding: 10px 14px;
             background: none;
             border: none;
             color: var(--muted);
             cursor: pointer;
             font-family: 'Rajdhani', sans-serif;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             letter-spacing: 1px;
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
         }
         .tab-btn:hover { color: var(--text); }
-        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-        .tab-content { display: none; padding: 12px; flex: 1; overflow-y: auto; flex-direction: column; gap: 10px; }
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .tab-content {
+            display: none;
+            padding: 12px;
+            flex: 1;
+            overflow-y: auto;
+            flex-direction: column;
+            gap: 10px;
+        }
         .tab-content.active { display: flex; }
 
         /* Table */
-        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
         .data-table th {
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             color: var(--accent);
             text-align: left;
             padding: 8px 10px;
             border-bottom: 1px solid var(--border);
             letter-spacing: 1px;
         }
-        .data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(30,58,95,0.4); vertical-align: middle; }
-        .data-table tr:hover td { background: rgba(0,212,255,0.03); }
-        .data-table .empty { text-align: center; color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; padding: 20px; }
+        .data-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(30,58,95,0.4);
+            vertical-align: middle;
+        }
+        .data-table tr:hover td {
+            background: rgba(0,212,255,0.03);
+        }
+        .data-table .empty {
+            text-align: center;
+            color: var(--muted);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.78rem;
+            padding: 20px;
+        }
 
         /* Badge */
-        .badge { padding: 3px 9px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
-        .badge-granted { background: rgba(0,255,136,0.15); color: var(--granted); border: 1px solid var(--granted); }
-        .badge-denied { background: rgba(255,71,87,0.15); color: var(--denied); border: 1px solid var(--denied); }
+        .badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .badge-granted {
+            background: rgba(0,255,136,0.15);
+            color: var(--granted);
+            border: 1px solid var(--granted);
+        }
+        .badge-denied {
+            background: rgba(255,71,87,0.15);
+            color: var(--denied);
+            border: 1px solid var(--denied);
+        }
 
         /* Stats */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .stat-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 14px; text-align: center; }
-        .stat-val { font-family: 'Share Tech Mono', monospace; font-size: 2rem; line-height: 1; }
-        .stat-lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .stat-card {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px;
+            text-align: center;
+        }
+        .stat-val {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+        .stat-lbl {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* Admin lock */
+        .admin-lock {
+            display: none;
+            background: rgba(255,71,87,0.08);
+            border: 1px solid var(--danger);
+            border-radius: 6px;
+            padding: 14px;
+            text-align: center;
+            color: var(--danger);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.82rem;
+        }
 
         /* Toast */
         .toast {
@@ -311,30 +523,55 @@
             padding: 12px 20px;
             border-radius: 6px;
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             z-index: 10000;
             display: none;
             font-family: 'Share Tech Mono', monospace;
             animation: toastIn 0.3s ease;
             max-width: 320px;
         }
-        @keyframes toastIn { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
-        .toast-success { background: rgba(0,255,136,0.15); border: 1px solid var(--granted); color: var(--granted); }
-        .toast-error { background: rgba(255,71,87,0.15); border: 1px solid var(--danger); color: var(--danger); }
-        .toast-info { background: rgba(0,212,255,0.15); border: 1px solid var(--accent); color: var(--accent); }
+        @keyframes toastIn {
+            from{transform:translateX(40px);opacity:0}
+            to{transform:translateX(0);opacity:1}
+        }
+        .toast-success {
+            background: rgba(0,255,136,0.15);
+            border: 1px solid var(--granted);
+            color: var(--granted);
+        }
+        .toast-error {
+            background: rgba(255,71,87,0.15);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+        .toast-info {
+            background: rgba(0,212,255,0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
 
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
 
 <!-- Header -->
 <div class="header">
-    <div class="header-title">⬡ HOMOMORPHIC FACIAL AUTHENTICATION SYSTEM</div>
-    <div class="status-pill loading" id="status-pill">
-        <div class="dot"></div>
-        <span id="status-text">Loading Models...</span>
+    <div class="header-title">
+        ⬡ HOMOMORPHIC FACIAL AUTHENTICATION SYSTEM
+    </div>
+    <div class="header-right">
+        <span class="user-badge" id="user-name">👤 Loading...</span>
+        <span class="role-badge" id="role-badge">...</span>
+        <div class="status-pill loading" id="status-pill">
+            <div class="dot"></div>
+            <span id="status-text">Loading...</span>
+        </div>
+        <a href="/logout" class="logout-btn">🚪 LOGOUT</a>
     </div>
 </div>
 
@@ -353,16 +590,19 @@
                     <span id="progress-text">0 / 5</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
+                    <div class="progress-fill"
+                         id="progress-fill"></div>
                 </div>
             </div>
 
-            <!-- Processing indicator -->
-            <div class="processing-overlay" id="processing-overlay">
+            <div class="processing-overlay"
+                 id="processing-overlay">
                 ⏳ Processing face automatically...
             </div>
 
-            <button class="btn btn-scan" id="scan-btn" onclick="toggleScan()">
+            <button class="btn btn-scan"
+                    id="scan-btn"
+                    onclick="toggleScan()">
                 ▶ START SCAN
             </button>
 
@@ -376,7 +616,9 @@
         <div class="panel-body">
 
             <div class="face-preview" id="face-preview">
-                <div class="face-preview-placeholder">[ NO FACE CAPTURED ]</div>
+                <div class="face-preview-placeholder">
+                    [ NO FACE CAPTURED ]
+                </div>
             </div>
 
             <div class="score-box">
@@ -386,16 +628,20 @@
 
             <div class="input-group">
                 <label>FULL NAME</label>
-                <input type="text" id="name-input" placeholder="Enter full name...">
+                <input type="text" id="name-input"
+                       placeholder="Enter full name...">
             </div>
 
             <div class="input-group">
                 <label>USER ID</label>
-                <input type="text" id="userid-input" placeholder="Enter user ID...">
+                <input type="text" id="userid-input"
+                       placeholder="Enter user ID...">
             </div>
 
-            <button class="btn btn-enroll" id="enroll-btn"
-                    onclick="enrollUser()" disabled>
+            <button class="btn btn-enroll"
+                    id="enroll-btn"
+                    onclick="enrollUser()"
+                    disabled>
                 ✅ ENROLL USER
             </button>
 
@@ -405,9 +651,21 @@
     <!-- RIGHT — Dashboard -->
     <div class="panel">
         <div class="tab-bar">
-            <button class="tab-btn active" onclick="showTab('users', this)">👥 USERS</button>
-            <button class="tab-btn" onclick="showTab('logs', this)">📜 LOGS</button>
-            <button class="tab-btn" onclick="showTab('admin', this)">⚙️ ADMIN</button>
+            <button class="tab-btn active"
+                    onclick="showTab('users', this)">
+                👥 USERS
+            </button>
+            <button class="tab-btn"
+                    onclick="showTab('logs', this)">
+                📜 LOGS
+            </button>
+            <!-- Admin tab — shown only to admin -->
+            <button class="tab-btn"
+                    id="admin-tab-btn"
+                    onclick="showTab('admin', this)"
+                    style="display:none">
+                ⚙️ ADMIN
+            </button>
         </div>
 
         <!-- Users Tab -->
@@ -424,7 +682,10 @@
                 </thead>
                 <tbody id="users-tbody"></tbody>
             </table>
-            <button class="btn btn-refresh" onclick="loadUsers()">🔄 REFRESH</button>
+            <button class="btn btn-refresh"
+                    onclick="loadUsers()">
+                🔄 REFRESH
+            </button>
         </div>
 
         <!-- Logs Tab -->
@@ -435,37 +696,69 @@
                         <th>TIME</th>
                         <th>NAME</th>
                         <th>SCORE</th>
+                        <th>TYPE</th>
                         <th>STATUS</th>
                     </tr>
                 </thead>
                 <tbody id="logs-tbody"></tbody>
             </table>
-            <button class="btn btn-refresh" onclick="loadLogs()">🔄 REFRESH</button>
+            <button class="btn btn-refresh"
+                    onclick="loadLogs()">
+                🔄 REFRESH
+            </button>
         </div>
 
-        <!-- Admin Tab -->
+        <!-- Admin Tab — only visible to admin -->
         <div class="tab-content" id="tab-admin">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-val" id="stat-users" style="color:var(--accent)">0</div>
-                    <div class="stat-lbl">👥 TOTAL USERS</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val" id="stat-scans" style="color:var(--accent)">0</div>
-                    <div class="stat-lbl">📜 TOTAL SCANS</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val" id="stat-granted" style="color:var(--granted)">0</div>
-                    <div class="stat-lbl">✅ GRANTED</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-val" id="stat-denied" style="color:var(--denied)">0</div>
-                    <div class="stat-lbl">❌ DENIED</div>
-                </div>
+
+            <!-- Lock message for non-admins -->
+            <div class="admin-lock" id="admin-lock">
+                🔒 ADMIN ACCESS REQUIRED<br>
+                <small>You don't have permission to access this panel</small>
             </div>
-            <button class="btn btn-danger" onclick="clearUsers()">🗑️ CLEAR ALL USERS</button>
-            <button class="btn btn-warning" onclick="clearLogs()">🗑️ CLEAR ALL LOGS</button>
-            <button class="btn btn-refresh" onclick="loadStats()">🔄 REFRESH STATS</button>
+
+            <!-- Admin content -->
+            <div id="admin-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-val"
+                             id="stat-users"
+                             style="color:var(--accent)">0</div>
+                        <div class="stat-lbl">👥 TOTAL USERS</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val"
+                             id="stat-scans"
+                             style="color:var(--accent)">0</div>
+                        <div class="stat-lbl">📜 TOTAL SCANS</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val"
+                             id="stat-granted"
+                             style="color:var(--granted)">0</div>
+                        <div class="stat-lbl">✅ GRANTED</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val"
+                             id="stat-denied"
+                             style="color:var(--denied)">0</div>
+                        <div class="stat-lbl">❌ DENIED</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger"
+                        onclick="clearUsers()">
+                    🗑️ CLEAR ALL USERS
+                </button>
+                <button class="btn btn-warning"
+                        onclick="clearLogs()">
+                    🗑️ CLEAR ALL LOGS
+                </button>
+                <button class="btn btn-refresh"
+                        onclick="loadStats()">
+                    🔄 REFRESH STATS
+                </button>
+            </div>
         </div>
     </div>
 
@@ -477,6 +770,7 @@
 <script>
 const socket = io();
 let isScanning = false;
+let userRole = 'operator';
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
 socket.on('system_status', (data) => {
@@ -490,34 +784,32 @@ socket.on('system_status', (data) => {
 });
 
 socket.on('progress', (data) => {
-    document.getElementById('progress-fill').style.width = data.percent + '%';
+    document.getElementById('progress-fill').style.width =
+        data.percent + '%';
     document.getElementById('progress-text').textContent =
         `${data.counter} / ${data.required}`;
 });
 
 socket.on('face_captured', (data) => {
-    // Stop scanning UI
     isScanning = false;
     const btn = document.getElementById('scan-btn');
     btn.textContent = '▶ START SCAN';
     btn.classList.remove('scanning');
 
-    // Show captured face
     document.getElementById('face-preview').innerHTML =
-        `<img src="/captured_face?t=${Date.now()}" alt="Captured Face">`;
-
-    // Show processing overlay
-    document.getElementById('processing-overlay').style.display = 'block';
+        `<img src="/captured_face?t=${Date.now()}"
+              alt="Captured Face">`;
+    document.getElementById('processing-overlay').style.display =
+        'block';
     document.getElementById('result-box').style.display = 'none';
     document.getElementById('score-value').textContent = '- -';
     document.getElementById('enroll-btn').disabled = true;
-
     showToast('📸 ' + data.message, 'info');
 });
 
-// ✅ Auto process result — no button needed!
 socket.on('process_result', (data) => {
-    document.getElementById('processing-overlay').style.display = 'none';
+    document.getElementById('processing-overlay').style.display =
+        'none';
 
     const score = data.score !== undefined ? data.score : -1;
     document.getElementById('score-value').textContent =
@@ -530,14 +822,17 @@ socket.on('process_result', (data) => {
         resultBox.className = 'result-box result-granted';
         resultBox.innerHTML =
             `✅ ACCESS GRANTED<br>👤 Welcome, ${data.name}!<br>` +
-            `<small style="opacity:0.7">ID: ${data.user_id} | Score: ${score.toFixed(4)}</small>`;
+            `<small style="opacity:0.7">` +
+            `ID: ${data.user_id} | Score: ${score.toFixed(4)}</small>`;
         document.getElementById('enroll-btn').disabled = true;
         showToast(`✅ Welcome, ${data.name}!`, 'success');
     } else if (data.status === 'unknown') {
         resultBox.className = 'result-box result-unknown';
         resultBox.innerHTML =
             `⚠️ UNKNOWN FACE<br>` +
-            `<small style="opacity:0.7">Fill details below to enroll</small>`;
+            `<small style="opacity:0.7">
+                Fill details below to enroll
+            </small>`;
         document.getElementById('enroll-btn').disabled = false;
         showToast('⚠️ Face not recognized. Enroll below.', 'info');
     } else if (data.status === 'error') {
@@ -551,19 +846,24 @@ socket.on('process_result', (data) => {
 });
 
 socket.on('processing_start', (data) => {
-    document.getElementById('processing-overlay').style.display = 'block';
-    document.getElementById('processing-overlay').textContent = data.message;
+    document.getElementById('processing-overlay').style.display =
+        'block';
+    document.getElementById('processing-overlay').textContent =
+        data.message;
 });
 
-// ─── Scan Toggle ──────────────────────────────────────────────────────────────
+// ─── Scan ─────────────────────────────────────────────────────────────────────
 async function toggleScan() {
     const btn = document.getElementById('scan-btn');
 
     if (!isScanning) {
-        const res = await fetch('/api/start_scan', { method: 'POST' });
+        const res = await fetch('/api/start_scan',
+            { method: 'POST' });
         const data = await res.json();
-        if (data.error) { showToast('❌ ' + data.error, 'error'); return; }
-
+        if (data.error) {
+            showToast('❌ ' + data.error, 'error');
+            return;
+        }
         isScanning = true;
         btn.textContent = '⏹ STOP SCAN';
         btn.classList.add('scanning');
@@ -572,8 +872,9 @@ async function toggleScan() {
         document.getElementById('score-value').textContent = '- -';
         document.getElementById('progress-fill').style.width = '0%';
         document.getElementById('progress-text').textContent = '0 / 5';
-        document.getElementById('processing-overlay').style.display = 'none';
-        showToast(' Scanning for real face...', 'info');
+        document.getElementById('processing-overlay').style.display =
+            'none';
+        showToast('👁️ Scanning for real face...', 'info');
     } else {
         await fetch('/api/stop_scan', { method: 'POST' });
         isScanning = false;
@@ -614,7 +915,8 @@ async function enrollUser() {
 
         const resultBox = document.getElementById('result-box');
         resultBox.className = 'result-box result-granted';
-        resultBox.innerHTML = `✅ ENROLLED SUCCESSFULLY!<br>👤 ${name}`;
+        resultBox.innerHTML =
+            `✅ ENROLLED SUCCESSFULLY!<br>👤 ${name}`;
         resultBox.style.display = 'block';
 
         document.getElementById('name-input').value = '';
@@ -638,7 +940,8 @@ async function loadUsers() {
 
     if (!users.length) {
         tbody.innerHTML =
-            '<tr><td colspan="5" class="empty">[ NO ENROLLED USERS ]</td></tr>';
+            '<tr><td colspan="5" class="empty">' +
+            '[ NO ENROLLED USERS ]</td></tr>';
         return;
     }
 
@@ -646,34 +949,32 @@ async function loadUsers() {
         <tr>
             <td style="color:var(--muted)">${i + 1}</td>
             <td>👤 ${u.name}</td>
-            <td style="font-family:'Share Tech Mono',monospace;font-size:0.78rem">
-                ${u.user_id}
+            <td style="font-family:'Share Tech Mono',monospace;
+                       font-size:0.75rem">${u.user_id}</td>
+            <td style="color:var(--muted);font-size:0.75rem">
+                ${u.enrolled_at}
             </td>
-            <td style="color:var(--muted);font-size:0.78rem">${u.enrolled_at}</td>
             <td>
+                ${userRole === 'admin' ? `
                 <button class="btn btn-sm btn-delete-user"
-                        onclick="deleteUser('${u.user_id}', '${u.name}')">
-                    🗑️ Delete
-                </button>
+                    onclick="deleteUser('${u.user_id}','${u.name}')">
+                    🗑️
+                </button>` : '<span style="color:var(--muted);font-size:0.7rem">—</span>'}
             </td>
         </tr>
     `).join('');
 }
 
-// ✅ Delete individual user
+// ─── Delete Individual User (Admin Only) ──────────────────────────────────────
 async function deleteUser(userId, name) {
     if (!confirm(`⚠️ Delete user "${name}"?`)) return;
-
-    const res = await fetch(`/api/delete_user/${userId}`, {
-        method: 'DELETE'
-    });
+    const res = await fetch(`/api/delete_user/${userId}`,
+        { method: 'DELETE' });
     const data = await res.json();
-
     if (data.error) {
         showToast('❌ ' + data.error, 'error');
         return;
     }
-
     showToast(`✅ ${name} deleted!`, 'success');
     loadUsers();
     loadStats();
@@ -687,15 +988,23 @@ async function loadLogs() {
 
     if (!logs.length) {
         tbody.innerHTML =
-            '<tr><td colspan="4" class="empty">[ NO ACCESS LOGS ]</td></tr>';
+            '<tr><td colspan="5" class="empty">' +
+            '[ NO ACCESS LOGS ]</td></tr>';
         return;
     }
 
     tbody.innerHTML = logs.map(l => `
         <tr>
-            <td style="color:var(--muted);font-size:0.78rem">${l.timestamp}</td>
+            <td style="color:var(--muted);font-size:0.75rem">
+                ${l.timestamp}
+            </td>
             <td>${l.name}</td>
-            <td style="font-family:'Share Tech Mono',monospace">${l.score}</td>
+            <td style="font-family:'Share Tech Mono',monospace">
+                ${l.score}
+            </td>
+            <td style="color:var(--muted);font-size:0.75rem">
+                ${l.login_type || 'face'}
+            </td>
             <td>
                 <span class="badge badge-${l.status.toLowerCase()}">
                     ${l.status}
@@ -715,17 +1024,21 @@ async function loadStats() {
     document.getElementById('stat-denied').textContent = s.denied;
 }
 
-// ─── Admin ────────────────────────────────────────────────────────────────────
+// ─── Admin Actions ────────────────────────────────────────────────────────────
 async function clearUsers() {
     if (!confirm('⚠️ Delete ALL enrolled users?')) return;
-    await fetch('/api/clear_users', { method: 'DELETE' });
+    const res = await fetch('/api/clear_users', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) { showToast('❌ ' + data.error, 'error'); return; }
     loadUsers(); loadStats();
     showToast('✅ All users cleared!', 'success');
 }
 
 async function clearLogs() {
     if (!confirm('⚠️ Delete ALL access logs?')) return;
-    await fetch('/api/clear_logs', { method: 'DELETE' });
+    const res = await fetch('/api/clear_logs', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) { showToast('❌ ' + data.error, 'error'); return; }
     loadLogs();
     showToast('✅ All logs cleared!', 'success');
 }
@@ -753,10 +1066,37 @@ function showToast(msg, type) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-window.onload = () => {
+window.onload = async () => {
     loadUsers();
     loadLogs();
     loadStats();
+
+    // Get current user info and set role
+    const res = await fetch('/api/me');
+    const user = await res.json();
+    userRole = user.role;
+
+    // Update header
+    document.getElementById('user-name').textContent =
+        `👤 ${user.name}`;
+    const roleBadge = document.getElementById('role-badge');
+    roleBadge.textContent = user.role.toUpperCase();
+    roleBadge.className = 'role-badge role-' + user.role;
+
+    // Show admin tab only for admin
+    if (user.role === 'admin') {
+        document.getElementById('admin-tab-btn').style.display =
+            'block';
+        document.getElementById('admin-content').style.display =
+            'block';
+        document.getElementById('admin-lock').style.display = 'none';
+    } else {
+        document.getElementById('admin-content').style.display =
+            'none';
+    }
+
+    // Reload users to show/hide delete buttons based on role
+    loadUsers();
 };
 </script>
 </body>
