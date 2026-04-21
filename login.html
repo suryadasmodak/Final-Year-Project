@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Biometric System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #07090f;
+            --panel: #0d1117;
+            --panel2: #111827;
+            --border: #1e3a5f;
+            --accent: #00d4ff;
+            --accent2: #00ff88;
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --text: #e0e0e0;
+            --muted: #6b7280;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,212,255,0.01) 2px,
+                rgba(0,212,255,0.01) 4px
+            );
+            pointer-events: none;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 420px 420px;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .box {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 35px;
+            position: relative;
+        }
+        .box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(
+                90deg, transparent, var(--accent), transparent);
+        }
+        .box-face::before {
+            background: linear-gradient(
+                90deg, transparent, var(--accent2), transparent);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .logo-icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .logo h1 {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        .logo p { font-size: 0.8rem; color: var(--muted); }
+
+        .divider {
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .input-group { margin-bottom: 14px; }
+        .input-group label {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            width: 100%;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 11px 13px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus { border-color: var(--accent); }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 6px;
+        }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn-admin {
+            background: linear-gradient(135deg, #0052cc, #0984e3);
+            color: #fff;
+        }
+        .btn-face {
+            background: linear-gradient(135deg, #00895a, #00b894);
+            color: #fff;
+        }
+        .btn-scan {
+            background: linear-gradient(135deg, #5f27cd, #6c5ce7);
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .error-box {
+            background: rgba(255,71,87,0.1);
+            border: 1px solid var(--danger);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: var(--danger);
+            font-size: 0.9rem;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        /* Camera */
+        #camera-feed {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: block;
+            background: #000;
+            margin-bottom: 10px;
+        }
+
+        .progress-wrap {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+        }
+        .progress-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 5px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(
+                90deg, var(--accent2), #00d4ff);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .result-box {
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            display: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        .result-granted {
+            background: rgba(0,255,136,0.08);
+            border: 1px solid var(--accent2);
+            color: var(--accent2);
+        }
+        .result-denied {
+            background: rgba(255,71,87,0.08);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+        .result-unknown {
+            background: rgba(255,165,2,0.08);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .section-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent2);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .status-bar {
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .scanning-badge {
+            display: none;
+            background: rgba(0,212,255,0.1);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent);
+            margin-bottom: 10px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%,100%{opacity:1} 50%{opacity:0.5}
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- LEFT — Admin Password Login -->
+    <div class="box">
+        <div class="logo">
+            <div class="logo-icon">🔐</div>
+            <h1>ADMIN LOGIN</h1>
+            <p>Username & Password Access</p>
+        </div>
+
+        {% if error %}
+        <div class="error-box">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="input-group">
+                <label>USERNAME</label>
+                <input type="text" name="username"
+                       placeholder="Enter admin username..."
+                       required autofocus>
+            </div>
+            <div class="input-group">
+                <label>PASSWORD</label>
+                <input type="password" name="password"
+                       placeholder="Enter password..."
+                       required>
+            </div>
+            <button type="submit" class="btn btn-admin">
+                🔓 LOGIN AS ADMIN
+            </button>
+        </form>
+
+        <div class="status-bar">
+            Admin access grants full system control
+        </div>
+    </div>
+
+    <!-- RIGHT — Face Scan Login -->
+    <div class="box box-face">
+        <div class="logo">
+            <div class="logo-icon">👁️</div>
+            <h1>FACE LOGIN</h1>
+            <p>Scan your enrolled face to enter</p>
+        </div>
+
+        <img id="camera-feed" src="/video_feed" alt="Camera">
+
+        <div class="progress-wrap">
+            <div class="progress-top">
+                <span>LIVENESS DETECTION</span>
+                <span id="progress-text">0 / 5</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="scanning-badge" id="scanning-badge">
+            👁️ Scanning for real face...
+        </div>
+
+        <div class="result-box" id="result-box"></div>
+
+        <button class="btn btn-scan" id="scan-btn"
+                onclick="toggleScan()">
+            ▶ START FACE SCAN
+        </button>
+
+        <div class="status-bar" id="face-status">
+            Only enrolled users can login via face
+        </div>
+    </div>
+
+</div>
+
+<script>
+const socket = io();
+let isScanning = false;
+
+socket.on('progress', (data) => {
+    document.getElementById('progress-fill').style.width =
+        data.percent + '%';
+    document.getElementById('progress-text').textContent =
+        `${data.counter} / ${data.required}`;
+});
+
+socket.on('face_captured', () => {
+    isScanning = false;
+    const btn = document.getElementById('scan-btn');
+    btn.textContent = '▶ START FACE SCAN';
+    btn.classList.remove('scanning');
+    document.getElementById('scanning-badge').style.display = 'none';
+    document.getElementById('face-status').textContent =
+        '⏳ Processing face...';
+    processFaceLogin();
+});
+
+async function toggleScan() {
+    const btn = document.getElementById('scan-btn');
+
+    if (!isScanning) {
+        const res = await fetch('/api/start_scan',
+            { method: 'POST' });
+        const data = await res.json();
+        if (data.error) {
+            document.getElementById('face-status').textContent =
+                '❌ ' + data.error;
+            return;
+        }
+        isScanning = true;
+        btn.textContent = '⏹ STOP SCAN';
+        document.getElementById('scanning-badge').style.display =
+            'block';
+        document.getElementById('result-box').style.display = 'none';
+        document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0 / 5';
+        document.getElementById('face-status').textContent =
+            '👁️ Look at the camera...';
+    } else {
+        await fetch('/api/stop_scan', { method: 'POST' });
+        isScanning = false;
+        btn.textContent = '▶ START FACE SCAN';
+        document.getElementById('scanning-badge').style.display = 'none';
+        document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0 / 5';
+        document.getElementById('face-status').textContent =
+            'Only enrolled users can login via face';
+    }
+}
+
+async function processFaceLogin() {
+    try {
+        const res = await fetch('/api/face_login', { method: 'POST' });
+        const data = await res.json();
+
+        const resultBox = document.getElementById('result-box');
+        resultBox.style.display = 'block';
+
+        if (data.status === 'granted') {
+            resultBox.className = 'result-box result-granted';
+            resultBox.innerHTML =
+                `✅ Welcome, ${data.name}!<br>` +
+                `<small>Score: ${data.score} | ` +
+                `Redirecting...</small>`;
+            document.getElementById('face-status').textContent =
+                '✅ Access granted! Redirecting...';
+            // Redirect to main app after 2 seconds
+            setTimeout(() => { window.location.href = '/'; }, 2000);
+        } else if (data.status === 'unknown') {
+            resultBox.className = 'result-box result-unknown';
+            resultBox.innerHTML =
+                `⚠️ Face not recognized!<br>` +
+                `<small>Score: ${data.score} — Not enrolled</small>`;
+            document.getElementById('face-status').textContent =
+                '⚠️ Not enrolled. Use admin login.';
+        } else if (data.error) {
+            resultBox.className = 'result-box result-denied';
+            resultBox.innerHTML = `❌ Error: ${data.error}`;
+        }
+
+    } catch (err) {
+        document.getElementById('face-status').textContent =
+            '❌ Error: ' + err.message;
+    }
+}
+
+// Face login API route
+async function setupFaceLoginRoute() {
+    // This is handled by the server
+}
+</script>
+
+</body>
+</html>
